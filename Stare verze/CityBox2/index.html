@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CityBox - ASCII City Builder</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #1a1a1a;
+      color: #c0c0c0;
+      font-family: 'Courier New', Courier, monospace;
+      line-height: 1;
+    }
+    #game-container {
+      width: 100%;
+      min-height: 100vh;
+    }
+    #header {
+      border-bottom: 1px solid #444;
+      position: sticky;
+      top: 0;
+      background-color: #1a1a1a;
+      z-index: 100;
+    }
+    #resources-bar {
+      padding: 8px 20px;
+      border-bottom: 1px solid #444;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #resources-left {
+      display: flex;
+      gap: 30px;
+    }
+    #menu-tabs {
+      display: flex;
+      border-bottom: 1px solid #444;
+    }
+    .menu-tab {
+      padding: 8px 30px;
+      text-align: center;
+      cursor: pointer;
+      border-right: 1px solid #444;
+      transition: all 0.2s;
+      background-color: #1a1a1a;
+      color: #c0c0c0;
+      border-top: none;
+      border-left: none;
+      border-bottom: none;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+    }
+    .menu-tab:hover {
+      background-color: #2a2a2a;
+      color: #fff;
+    }
+    .menu-tab.active {
+      background-color: #333;
+      color: #fff;
+    }
+    #settings-bar {
+      padding: 6px 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+    }
+    .settings-btn {
+      background-color: #1a1a1a;
+      color: #c0c0c0;
+      border: 1px solid #444;
+      padding: 4px 12px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .settings-btn:hover {
+      background-color: #333;
+      color: #fff;
+    }
+    #main-area {
+      padding: 20px 40px;
+      min-height: calc(100vh - 120px);
+      font-size: 14px;
+      display: flex;
+      justify-content: center;
+    }
+    .main-content {
+      width: 100%;
+      max-width: 900px;
+    }
+    .content-section {
+      display: none;
+    }
+    .content-section.active {
+      display: block;
+    }
+    #cityhall-content, #settings-content {
+      white-space: pre-wrap;
+    }
+    #charity-button {
+      background-color: #1a1a1a;
+      color: #c0c0c0;
+      border: 1px solid #444;
+      padding: 8px 16px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    #charity-button:hover {
+      background-color: #333;
+      color: #fff;
+    }
+    .hidden {
+      display: none !important;
+    }
+    .tooltip {
+      position: fixed;
+      background-color: #2a2a2a;
+      border: 1px solid #555;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #c0c0c0;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+      display: none;
+    }
+    .tooltip-title { color: #fff; font-weight: bold; margin-bottom: 4px; }
+    .tooltip-cost { color: #ffcc00; }
+    .tooltip-effect { color: #88ff88; margin-top: 2px; }
+    #map-display, #shop-display {
+      font-family: 'Courier New', Courier, monospace;
+      white-space: pre;
+      line-height: 1.15;
+      font-size: 13px;
+    }
+    .build-link {
+      color: #888;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .build-link:hover {
+      color: #fff;
+    }
+    .clickable {
+      cursor: pointer;
+    }
+    .clickable:hover {
+      color: #fff;
+    }
+    .shop-item-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 8px;
+      text-decoration: underline;
+    }
+    .shop-item-btn:hover {
+      color: #fff;
+    }
+    #inventory-display {
+      font-family: 'Courier New', Courier, monospace;
+      white-space: pre;
+      line-height: 1.15;
+      font-size: 13px;
+    }
+    .equip-select {
+      background-color: #1a1a1a;
+      color: #c0c0c0;
+      border: 1px solid #555;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      padding: 2px 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="header">
+      <div id="resources-bar">
+        <div id="resources-left">
+          <span>Money: <span id="money">0</span></span>
+          <span>Energy: <span id="energy">0</span></span>
+        </div>
+        <div id="resources-right">
+          <span>CityBox v1.0</span>
+        </div>
+      </div>
+      <div id="menu-tabs">
+        <button class="menu-tab active" data-tab="cityhall">CITY HALL</button>
+        <button class="menu-tab" data-tab="inventory">INVENTORY</button>
+        <button class="menu-tab" data-tab="map">MAP</button>
+        <button class="menu-tab" data-tab="settings">SETTINGS</button>
+      </div>
+      <div id="settings-bar">
+        <button class="settings-btn" onclick="saveGame()">SAVE</button>
+        <button class="settings-btn" onclick="loadGame()">LOAD</button>
+        <button class="settings-btn" onclick="resetGame()">RESET</button>
+      </div>
+    </div>
+
+    <div class="tooltip" id="tooltip">
+      <div class="tooltip-title"></div>
+      <div class="tooltip-cost"></div>
+      <div class="tooltip-effect"></div>
+    </div>
+
+    <div id="main-area">
+      <div class="main-content">
+        <div id="cityhall-content" class="content-section active">Welcome to CityBox!
+
+Your city is generating money automatically.
+Current rate: <span id="money-rate">1</span> per second
+
+<button id="charity-button" onclick="sendToCharity()">[ Send 10 Money to Charity ]</button>
+
+<div id="charity-stats" class="hidden">
+Total donated to charity: <span id="charity-total">0</span>
+</div></div>
+
+        <div id="inventory-content" class="content-section">
+          <div id="inventory-display"></div>
+        </div>
+
+        <div id="map-content" class="content-section">
+          <div id="map-view">
+            <div id="map-display"></div>
+          </div>
+          <div id="shop-view" class="hidden">
+            <div id="shop-display"></div>
+          </div>
+        </div>
+
+        <div id="settings-content" class="content-section">GAME CONTROLS
+-------------
+SAVE  - Save your current progress
+LOAD  - Load your previously saved game
+RESET - Start a new game
+
+Game auto-saves every 30 seconds.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const gameState = {
+      money: 0,
+      energy: 0,
+      moneyPerSecond: 1,
+      charityTotal: 0,
+      roads: { west: false, east: false, south: false },
+      buildings: { factory: false, mine: false, shop: false },
+      inventory: [],
+      equipped: { weapon: null, hat: null, armor: null, boots: null },
+      shopItems: {
+        sword: { bought: false, cost: 50, name: 'Wooden Sword', slot: 'weapon', attack: 3, defense: 0 },
+        shield: { bought: false, cost: 75, name: 'Iron Shield', slot: 'armor', attack: 0, defense: 5 },
+        hat: { bought: false, cost: 40, name: 'Leather Cap', slot: 'hat', attack: 0, defense: 2 },
+        boots: { bought: false, cost: 60, name: 'Travel Boots', slot: 'boots', attack: 0, defense: 2 }
+      }
+    };
+
+    const tooltip = document.getElementById('tooltip');
+    const tooltipTitle = tooltip.querySelector('.tooltip-title');
+    const tooltipCost = tooltip.querySelector('.tooltip-cost');
+    const tooltipEffect = tooltip.querySelector('.tooltip-effect');
+
+    function showTooltip(e, title, cost, effect) {
+      tooltipTitle.textContent = title;
+      tooltipCost.textContent = cost ? 'Cost: ' + cost + ' Money' : '';
+      tooltipEffect.textContent = effect || '';
+      tooltip.style.display = 'block';
+      moveTooltip(e);
+    }
+
+    function hideTooltip() {
+      tooltip.style.display = 'none';
+    }
+
+    function moveTooltip(e) {
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 10) + 'px';
+    }
+
+    function renderMap() {
+      const rW = gameState.roads.west;
+      const rE = gameState.roads.east;
+      const rS = gameState.roads.south;
+      const bF = gameState.buildings.factory;
+      const bM = gameState.buildings.mine;
+      const bS = gameState.buildings.shop;
+
+      let lines = [];
+
+      // Row 1: Factory area (left)
+      if (rW && bF) {
+        lines.push("   _____________________                                                          ");
+        lines.push("  |      FACTORY        |                                                         ");
+        lines.push("  |  __   __   __   __  |                                                         ");
+        lines.push("  | |$$| |$$| |$$| |$$| |                                                         ");
+        lines.push("  | |__| |__| |__| |__| |                                                         ");
+        lines.push("  |   _______________   |                                                         ");
+        lines.push("  |  |     ___      |   |                                                         ");
+        lines.push("  |__|____|   |_____|___|                                                         ");
+        lines.push("           |   |                                                                  ");
+      } else if (rW) {
+        lines.push("                                                                                  ");
+        lines.push("       {{FACTORY}}                                                                ");
+        lines.push("           |                                                                      ");
+        lines.push("           |                                                                      ");
+        lines.push("           |                                                                      ");
+        lines.push("           |                                                                      ");
+        lines.push("           |                                                                      ");
+        lines.push("           |                                                                      ");
+        lines.push("           |                                                                      ");
+      } else {
+        lines.push("                                                                                  ");
+        lines.push("    {{WEST_ROAD}}                                                                 ");
+        lines.push("                                                                                  ");
+        lines.push("                                                                                  ");
+        lines.push("                                                                                  ");
+        lines.push("                                                                                  ");
+        lines.push("                                                                                  ");
+        lines.push("                                                                                  ");
+        lines.push("                                                                                  ");
+      }
+
+      // Road and City Hall
+      if (rW) {
+        lines.push("===========+                                                                      ");
+      } else {
+        lines.push("                                                                                  ");
+      }
+
+      // City Hall - centered
+      lines.push("           |                     /\\                                               ");
+      lines.push("           |                    /  \\                                              ");
+      lines.push("           |                   /    \\                                             ");
+      lines.push("           |                  /  /\\  \\                                            ");
+      lines.push("           |                 /  /  \\  \\                                           ");
+      lines.push("           |                /  /    \\  \\                                          ");
+      lines.push("           |               /  /______\\  \\                                         ");
+
+      lines.push("           |              /  /|      |\\  \\                                       ");
+      lines.push("           |             /  / |      | \\  \\                                      ");
+      lines.push("           |            /  /  |      |  \\  \\                                     ");
+      lines.push("           |           /  /   |      |   \\  \\                                    ");
+      lines.push("           |          /  /____|      |____\\  \\                                   ");
+      lines.push("           |         /________________________\\                                  ");
+      lines.push("           |         |     |   {{CITYHALL}}   |     |                            ");
+      lines.push("           |         |     |          |     |                                    ");
+      lines.push("           |         | [ ] |          | [ ] |" + (rE ? "==============================" : "                              "));
+      lines.push("           |         |     |   ____   |     |" + (rE ? "                              " : "                              "));
+      lines.push("           |         |     |  |    |  |     |                                    ");
+      lines.push("===========+=========|_____|__|    |__|_____|" + (rE ? "==============================" : "                              "));
+
+      // East road label or Mine
+      if (rE && bM) {
+        lines.push("                                                                   /\\            ");
+        lines.push("                                                                  /  \\           ");
+        lines.push("                                                                 / /\\ \\          ");
+        lines.push("                                                                / /  \\ \\         ");
+        lines.push("                                                               / / /\\ \\ \\        ");
+        lines.push("                                                              /_/_/  \\_\\_\\       ");
+        lines.push("                                                             |    MINE    |      ");
+        lines.push("                                                             |____[  ]____|      ");
+      } else if (rE) {
+        lines.push("                                                                   {{MINE}}       ");
+      } else {
+        lines.push("                                                             {{EAST_ROAD}}        ");
+      }
+
+      // Road going down
+      lines.push("                           ||                                                     ");
+      lines.push("                           ||                                                     ");
+
+      if (rS) {
+        lines.push("                           ||                                                     ");
+        lines.push("                           ||                                                     ");
+        lines.push("                           ||                                                     ");
+        if (bS) {
+          lines.push("                    ___________________                                          ");
+          lines.push("                   /                   \\                                         ");
+          lines.push("                  /      THE {{SHOP}}       \\                                        ");
+          lines.push("                 /   _________________   \\                                       ");
+          lines.push("                |   |                 |   |                                      ");
+          lines.push("                |   |  [] OPEN []     |   |                                      ");
+          lines.push("                |   |_________________|   |                                      ");
+          lines.push("                |___|_______[  ]______|___|                                      ");
+        } else {
+          lines.push("                                                                                 ");
+          lines.push("                         {{SHOP}}                                                ");
+          lines.push("                                                                                 ");
+        }
+      } else {
+        lines.push("                                                                                 ");
+        lines.push("                       {{SOUTH_ROAD}}                                            ");
+        lines.push("                                                                                 ");
+      }
+
+      let mapStr = lines.join('\n');
+
+      // Replace placeholders with clickable elements
+      mapStr = mapStr.replace('{{CITYHALL}}', '<span class="clickable" onclick="goToCityHall()">CITY</span>');
+      mapStr = mapStr.replace('{{CITYHALL}}', 'HALL');
+
+      if (mapStr.includes('{{WEST_ROAD}}')) {
+        mapStr = mapStr.replace('{{WEST_ROAD}}', '<span class="build-link" data-type="road" data-id="west" data-cost="50" data-effect="Unlocks Factory">West Road</span>');
+      }
+      if (mapStr.includes('{{EAST_ROAD}}')) {
+        mapStr = mapStr.replace('{{EAST_ROAD}}', '<span class="build-link" data-type="road" data-id="east" data-cost="50" data-effect="Unlocks Mine">East Road</span>');
+      }
+      if (mapStr.includes('{{SOUTH_ROAD}}')) {
+        mapStr = mapStr.replace('{{SOUTH_ROAD}}', '<span class="build-link" data-type="road" data-id="south" data-cost="50" data-effect="Unlocks Shop">South Road</span>');
+      }
+      if (mapStr.includes('{{FACTORY}}')) {
+        mapStr = mapStr.replace('{{FACTORY}}', '<span class="build-link" data-type="building" data-id="factory" data-cost="100" data-effect="+2 money/sec">Factory</span>');
+      }
+      if (mapStr.includes('{{MINE}}')) {
+        mapStr = mapStr.replace('{{MINE}}', '<span class="build-link" data-type="building" data-id="mine" data-cost="200" data-effect="+5 money/sec">Mine</span>');
+      }
+      if (mapStr.includes('{{SHOP}}')) {
+        if (bS) {
+          // Shop is built - make it clickable to enter
+          mapStr = mapStr.replace('{{SHOP}}', '<span class="clickable" onclick="enterShop()">SHOP</span>');
+        } else {
+          // Shop not built - make it a build link
+          mapStr = mapStr.replace('{{SHOP}}', '<span class="build-link" data-type="building" data-id="shop" data-cost="150" data-effect="Buy items">Shop</span>');
+        }
+      }
+
+      document.getElementById('map-display').innerHTML = mapStr;
+
+      // Add event listeners to build links
+      document.querySelectorAll('.build-link').forEach(btn => {
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        const cost = parseInt(btn.dataset.cost);
+        const effect = btn.dataset.effect;
+        const name = type === 'road' ? 'Build ' + btn.textContent : 'Build ' + btn.textContent;
+
+        btn.addEventListener('mouseenter', (e) => showTooltip(e, name, cost, effect));
+        btn.addEventListener('mousemove', moveTooltip);
+        btn.addEventListener('mouseleave', hideTooltip);
+        btn.addEventListener('click', () => {
+          if (type === 'road') buildRoad(id);
+          else buildBuilding(id);
+        });
+      });
+    }
+
+    function buildRoad(roadId) {
+      const costs = { west: 50, east: 50, south: 50 };
+      if (gameState.money >= costs[roadId] && !gameState.roads[roadId]) {
+        gameState.money -= costs[roadId];
+        gameState.roads[roadId] = true;
+        hideTooltip();
+        updateDisplay();
+        renderMap();
+      }
+    }
+
+    function buildBuilding(buildingId) {
+      const data = {
+        factory: { cost: 100, income: 2 },
+        mine: { cost: 200, income: 5 },
+        shop: { cost: 150, income: 0 }
+      };
+      if (gameState.money >= data[buildingId].cost && !gameState.buildings[buildingId]) {
+        gameState.money -= data[buildingId].cost;
+        gameState.buildings[buildingId] = true;
+        gameState.moneyPerSecond += data[buildingId].income;
+        hideTooltip();
+        updateDisplay();
+        renderMap();
+      }
+    }
+
+    function renderShop() {
+      let shop = `
+  /        |                                                              |        \\
+ /         |                                                              |         \\
+|          |                                                              |          |
+|          |                                                              |          |
+|          |                                                              |          |
+|          |                               ___                            |          |
+|          |                              /   \\                           |          |
+|          |                             | o o |                          |          |
+|          |                             |  L  |                          |          |
+|          |                              \\___/                           |          |
+|          |                            __|   |__                         |          |
+|          |                           |         |                        |          |
+|          |                           |SHOPKEEP |                        |          |
+|          |                           |_________|                        |          |
+|          |___________________                   __________________      |          |
+|         /                   /|                 |\\                 \\     |          |
+|        /   [SWORD]         / |                 | \\     [BOOTS]    \\    |          |
+|       /                   /  |                 |  \\                \\   |          |
+|      /      |            /   |   [SHIELD]      |   \\      _   _    \\  |          |
+|     /      /|\\          /    |                 |    \\    / \\_/ \\    \\ |          |
+|    /      / | \\        /     |     ___         |     \\  |     |      \\|          |
+|   /         |         /      |    /   \\        |      \\  \\___/        \\          |
+|  /          |        /       |   |     |       |       \\               \\         |
+| /___________+_______/        |    \\___/        |        \\_______________\\        |
+||                    |        |                 |                         |        |
+||____________________|________|_________________|_________________________|________|`;
+
+      let html = shop;
+      html += '\n\n  Items for sale: ';
+
+      if (!gameState.shopItems.sword.bought) {
+        html += '<span class="shop-item-btn" data-item="sword">[Sword $50]</span> ';
+      }
+      if (!gameState.shopItems.shield.bought) {
+        html += '<span class="shop-item-btn" data-item="shield">[Shield $75]</span> ';
+      }
+      if (!gameState.shopItems.hat.bought) {
+        html += '<span class="shop-item-btn" data-item="hat">[Cap $40]</span> ';
+      }
+      if (!gameState.shopItems.boots.bought) {
+        html += '<span class="shop-item-btn" data-item="boots">[Boots $60]</span> ';
+      }
+
+      const allBought = Object.values(gameState.shopItems).every(i => i.bought);
+      if (allBought) html += '(Sold out!)';
+
+      html += '\n\n  <span class="clickable" onclick="exitShop()">[EXIT SHOP]</span>';
+
+      document.getElementById('shop-display').innerHTML = html;
+
+      document.querySelectorAll('.shop-item-btn').forEach(btn => {
+        const itemId = btn.dataset.item;
+        const item = gameState.shopItems[itemId];
+        btn.addEventListener('mouseenter', (e) => showTooltip(e, item.name, item.cost, `ATK: +${item.attack}  DEF: +${item.defense}`));
+        btn.addEventListener('mousemove', moveTooltip);
+        btn.addEventListener('mouseleave', hideTooltip);
+        btn.addEventListener('click', () => buyItem(itemId));
+      });
+    }
+
+    function renderInventory() {
+      let totalAtk = 1;
+      let totalDef = 0;
+      Object.values(gameState.equipped).forEach(itemId => {
+        if (itemId && gameState.shopItems[itemId]) {
+          totalAtk += gameState.shopItems[itemId].attack;
+          totalDef += gameState.shopItems[itemId].defense;
+        }
+      });
+
+      const weaponItems = gameState.inventory.filter(id => gameState.shopItems[id].slot === 'weapon');
+      const hatItems = gameState.inventory.filter(id => gameState.shopItems[id].slot === 'hat');
+      const armorItems = gameState.inventory.filter(id => gameState.shopItems[id].slot === 'armor');
+      const bootsItems = gameState.inventory.filter(id => gameState.shopItems[id].slot === 'boots');
+
+      // Generate select options
+      const weaponOpts = '<option value="">Nothing</option>' + weaponItems.map(id => 
+        `<option value="${id}" ${gameState.equipped.weapon === id ? 'selected' : ''}>${gameState.shopItems[id].name}</option>`).join('');
+      const hatOpts = '<option value="">Nothing</option>' + hatItems.map(id => 
+        `<option value="${id}" ${gameState.equipped.hat === id ? 'selected' : ''}>${gameState.shopItems[id].name}</option>`).join('');
+      const armorOpts = '<option value="">Nothing</option>' + armorItems.map(id => 
+        `<option value="${id}" ${gameState.equipped.armor === id ? 'selected' : ''}>${gameState.shopItems[id].name}</option>`).join('');
+      const bootsOpts = '<option value="">Nothing</option>' + bootsItems.map(id => 
+        `<option value="${id}" ${gameState.equipped.boots === id ? 'selected' : ''}>${gameState.shopItems[id].name}</option>`).join('');
+
+      // Define ASCII art as arrays for proper line access
+      const weaponArtEquipped = [
+        "        |           ",
+        "       /|\\          ",
+        "      / | \\         ",
+        "        |           ",
+        "        |           ",
+        "       ===          "
+      ];
+      const weaponArtEmpty = [
+        "                    ",
+        "   ...........      ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    "
+      ];
+
+      const hatArtEquipped = [
+        "       ____         ",
+        "      /    \\        ",
+        "     /______\\       ",
+        "     |      |       ",
+        "                    ",
+        "                    "
+      ];
+      const hatArtEmpty = [
+        "                    ",
+        "    .........       ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    "
+      ];
+
+      const armorArtEquipped = [
+        "       ,---.        ",
+        "      /     \\       ",
+        "     |   +   |      ",
+        "     |       |      ",
+        "      \\     /       ",
+        "       '---'        "
+      ];
+      const armorArtEmpty = [
+        "                    ",
+        "   ...........      ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    "
+      ];
+
+      const bootsArtEquipped = [
+        "    __    __        ",
+        "   /  \\  /  \\       ",
+        "  |    ||    |      ",
+        "  |____||____|      ",
+        "                    ",
+        "                    "
+      ];
+      const bootsArtEmpty = [
+        "                    ",
+        "    .........       ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    "
+      ];
+
+      const weaponArt = gameState.equipped.weapon ? weaponArtEquipped : weaponArtEmpty;
+      const hatArt = gameState.equipped.hat ? hatArtEquipped : hatArtEmpty;
+      const armorArt = gameState.equipped.armor ? armorArtEquipped : armorArtEmpty;
+      const bootsArt = gameState.equipped.boots ? bootsArtEquipped : bootsArtEmpty;
+
+      let html = `+------------------------+                          +------------------------+
+|        WEAPON          |                          |         HAT            |
++------------------------+                          +------------------------+
+| <select class="equip-select" onchange="equipItem('weapon', this.value)">${weaponOpts}</select>        |                          | <select class="equip-select" onchange="equipItem('hat', this.value)">${hatOpts}</select>            |
+|                        |                          |                        |
+|${weaponArt[0]}    |                          |${hatArt[0]}    |
+|${weaponArt[1]}    |                          |${hatArt[1]}    |
+|${weaponArt[2]}    |                          |${hatArt[2]}    |
+|${weaponArt[3]}    |                          |${hatArt[3]}    |
+|${weaponArt[4]}    |                          |${hatArt[4]}    |
+|${weaponArt[5]}    |                          |${hatArt[5]}    |
++------------------------+                          +------------------------+
+
++------------------------+                          +------------------------+
+|      BODY ARMOR        |                          |        BOOTS           |
++------------------------+                          +------------------------+
+| <select class="equip-select" onchange="equipItem('armor', this.value)">${armorOpts}</select>         |                          | <select class="equip-select" onchange="equipItem('boots', this.value)">${bootsOpts}</select>            |
+|                        |                          |                        |
+|${armorArt[0]}    |                          |${bootsArt[0]}    |
+|${armorArt[1]}    |                          |${bootsArt[1]}    |
+|${armorArt[2]}    |                          |${bootsArt[2]}    |
+|${armorArt[3]}    |                          |${bootsArt[3]}    |
+|${armorArt[4]}    |                          |${bootsArt[4]}    |
+|${armorArt[5]}    |                          |${bootsArt[5]}    |
++------------------------+                          +------------------------+
+
++--------------------------------------------------------------------------+
+|  Max HP: 100       Attack: ${String(totalAtk).padEnd(3)}       Defense: ${String(totalDef).padEnd(3)}                    |
++--------------------------------------------------------------------------+`;
+
+      if (gameState.inventory.length > 0) {
+        html += `
++--------------------------------------------------------------------------+
+|  YOUR ITEMS: ${gameState.inventory.map(id => gameState.shopItems[id].name).join(', ').padEnd(56)}|
++--------------------------------------------------------------------------+`;
+      }
+
+      document.getElementById('inventory-display').innerHTML = html;
+    }
+
+    function equipItem(slot, itemId) {
+      gameState.equipped[slot] = itemId || null;
+      renderInventory();
+    }
+
+    const menuTabs = document.querySelectorAll('.menu-tab');
+    const contentSections = document.querySelectorAll('.content-section');
+
+    menuTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        menuTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        contentSections.forEach(section => section.classList.remove('active'));
+
+        const tabName = tab.getAttribute('data-tab');
+        document.getElementById(tabName + '-content').classList.add('active');
+
+        if (tabName === 'map') {
+          document.getElementById('map-view').classList.remove('hidden');
+          document.getElementById('shop-view').classList.add('hidden');
+          renderMap();
+        }
+        if (tabName === 'inventory') {
+          renderInventory();
+        }
+      });
+    });
+
+    function updateDisplay() {
+      document.getElementById('money').textContent = Math.floor(gameState.money);
+      document.getElementById('energy').textContent = Math.floor(gameState.energy);
+      document.getElementById('charity-total').textContent = gameState.charityTotal;
+      document.getElementById('money-rate').textContent = gameState.moneyPerSecond;
+
+      const charityBtn = document.getElementById('charity-button');
+      charityBtn.disabled = gameState.money < 10;
+
+      if (gameState.charityTotal > 0) {
+        document.getElementById('charity-stats').classList.remove('hidden');
+      }
+    }
+
+    function generateResources() {
+      gameState.money += gameState.moneyPerSecond / 10;
+      updateDisplay();
+    }
+
+    function sendToCharity() {
+      if (gameState.money >= 10) {
+        gameState.money -= 10;
+        gameState.charityTotal += 10;
+        updateDisplay();
+      }
+    }
+
+    function enterShop() {
+      document.getElementById('map-view').classList.add('hidden');
+      document.getElementById('shop-view').classList.remove('hidden');
+      renderShop();
+    }
+
+    function exitShop() {
+      document.getElementById('shop-view').classList.add('hidden');
+      document.getElementById('map-view').classList.remove('hidden');
+    }
+
+    function goToCityHall() {
+      menuTabs.forEach(t => t.classList.remove('active'));
+      document.querySelector('[data-tab="cityhall"]').classList.add('active');
+      contentSections.forEach(section => section.classList.remove('active'));
+      document.getElementById('cityhall-content').classList.add('active');
+    }
+
+    function buyItem(itemId) {
+      const item = gameState.shopItems[itemId];
+      if (!item.bought && gameState.money >= item.cost) {
+        gameState.money -= item.cost;
+        item.bought = true;
+        gameState.inventory.push(itemId);
+        hideTooltip();
+        updateDisplay();
+        renderShop();
+      }
+    }
+
+    function saveGame() {
+      localStorage.setItem('citybox_save', JSON.stringify({
+        money: gameState.money,
+        energy: gameState.energy,
+        moneyPerSecond: gameState.moneyPerSecond,
+        charityTotal: gameState.charityTotal,
+        roads: gameState.roads,
+        buildings: gameState.buildings,
+        inventory: gameState.inventory,
+        equipped: gameState.equipped,
+        shopItems: gameState.shopItems
+      }));
+    }
+
+    function loadGame() {
+      const data = localStorage.getItem('citybox_save');
+      if (data) {
+        const p = JSON.parse(data);
+        gameState.money = p.money || 0;
+        gameState.energy = p.energy || 0;
+        gameState.moneyPerSecond = p.moneyPerSecond || 1;
+        gameState.charityTotal = p.charityTotal || 0;
+        gameState.roads = p.roads || { west: false, east: false, south: false };
+        gameState.buildings = p.buildings || { factory: false, mine: false, shop: false };
+        gameState.inventory = p.inventory || [];
+        gameState.equipped = p.equipped || { weapon: null, hat: null, armor: null, boots: null };
+        gameState.shopItems = p.shopItems || gameState.shopItems;
+        updateDisplay();
+      }
+    }
+
+    function resetGame() {
+      gameState.money = 0;
+      gameState.energy = 0;
+      gameState.moneyPerSecond = 1;
+      gameState.charityTotal = 0;
+      gameState.roads = { west: false, east: false, south: false };
+      gameState.buildings = { factory: false, mine: false, shop: false };
+      gameState.inventory = [];
+      gameState.equipped = { weapon: null, hat: null, armor: null, boots: null };
+      gameState.shopItems = {
+        sword: { bought: false, cost: 50, name: 'Wooden Sword', slot: 'weapon', attack: 3, defense: 0 },
+        shield: { bought: false, cost: 75, name: 'Iron Shield', slot: 'armor', attack: 0, defense: 5 },
+        hat: { bought: false, cost: 40, name: 'Leather Cap', slot: 'hat', attack: 0, defense: 2 },
+        boots: { bought: false, cost: 60, name: 'Travel Boots', slot: 'boots', attack: 0, defense: 2 }
+      };
+      localStorage.removeItem('citybox_save');
+      updateDisplay();
+      renderMap();
+    }
+
+    setInterval(saveGame, 30000);
+
+    window.addEventListener('load', () => {
+      loadGame();
+      updateDisplay();
+      renderMap();
+    });
+
+    setInterval(generateResources, 100);
+  </script>
+</body>
+</html>
